@@ -1,0 +1,51 @@
+---
+- name: Add MongoDB repository
+  yum_repository:
+    name: mongodb-org
+    description: MongoDB Repository
+    baseurl: "https://repo.mongodb.org/yum/amazon/2/mongodb-org/{{ mongodb_version }}/x86_64/"
+    gpgcheck: yes
+    enabled: yes
+    gpgkey: https://www.mongodb.org/static/pgp/server-5.0.asc
+
+- name: Install MongoDB
+  yum:
+    name: mongodb-org
+    state: present
+
+- name: Create MongoDB keyfile
+  copy:
+    content: "{{ keyfile_content }}"
+    dest: "{{ mongodb_keyfile }}"
+    owner: mongod
+    group: mongod
+    mode: '0400'
+
+- name: Configure mongod.conf
+  template:
+    src: mongod.conf.j2
+    dest: /etc/mongod.conf
+    owner: mongod
+    group: mongod
+    mode: '0644'
+
+- name: Enable and start MongoDB
+  service:
+    name: mongod
+    state: started
+    enabled: yes
+
+- name: Initialize MongoDB Replica Set
+  command: >
+    mongo --eval 'rs.initiate({_id: "{{ replica_set_name }}", members: [{ _id: 0, host: "node1:27017" }, { _id: 1, host: "node2:27017" }, { _id: 2, host: "node3:27017" }]})'
+  when: inventory_hostname == 'node1'
+
+- name: Create MongoDB admin user
+  command: >
+    mongo admin --eval 'db.createUser({user: "admin", pwd: "password", roles: [{ role: "root", db: "admin" }]})'
+  when: inventory_hostname == 'node1'
+
+- name: Load sample data
+  command: >
+    mongoimport --db mydatabase --collection mycollection --file /path/to/sampledata.json --authenticationDatabase admin -u admin -p password
+  when: inventory_hostname == 'node1'

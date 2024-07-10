@@ -1,0 +1,11 @@
+---
+- hosts: all
+  become: yes
+  vars:
+    mongodb_version: "7.0"
+    replica_set_name: "rs0"
+    mongodb_keyfile: "/etc/mongod.keyfile"
+    keyfile_content: "your-keyfile-content"  # Replace with actual keyfile content
+
+  roles:
+    - mongodb
